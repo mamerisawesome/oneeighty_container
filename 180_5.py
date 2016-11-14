@@ -16,12 +16,8 @@ def generate_matrix (n):
     print '[DONE]\tGenerated matrix of random integers'
     return output
 
-def column_sum (matrix, m, n, index=0, parallel=False):
-    if (parallel):
-        global final_vector
-
+def column_sum (matrix, m, n, parallel=False):
     output = []
-
     for i in range(0, m):
         sum_v = 0
         for j in range(0, n):
@@ -62,23 +58,32 @@ rank = comm.Get_rank()
 
 final_vector = None
 sendbuf = None
+recvbuf = None
+mat_size = 10000
 
 if rank == 0:
+    t = time.time()
     sendbuf = generate_matrix(mat_size)
-    sendbuf = break_matrix(sendbuf, size - 1)
-    final_vector = []
-    for i in range(0, size-1):
-      print "[0] Sending to " + str(i)
-      recvbuf = comm.send({
-        data: sendbuf[i],
-        size: 
-      }, dest=i+1, tag=i+1)
-else:
-    while not comm.Iprobe(source=0, tag=rank):
-        print "[" + str(rank) + "] Listening to root"
-        time.sleep(1)
-    recvbuf = comm.recv(source=0, tag=rank)
-    column_sum(recvbuf, )
+    sendbuf = break_matrix(sendbuf, size)
+    # arr = list(reversed(range(1, size)))
+    # for i in range(1, size):
+        # print "[0] Sending to " + str(i)
+        # recvbuf = comm.send({
+        #     "data": sendbuf[i],
+        #     "m": mat_size,
+        #     "n": mat_size / (size),
+        # }, dest=i, tag=i)
+    # mat = sendbuf[0]
+    # m = mat_size
+    # n = mat_size / size
+    data = comm.scatter(sendbuf, root=0)
+    print "[TIME] " + str(time.time() - t)
+# else:
+#     while not comm.Iprobe(source=0, tag=rank):
+#         print "[" + str(rank) + "] Listening to root"
+#         time.sleep(1)
 
-comm.bcast(recvbuf, root=0)
-
+# recvbuf = comm.recv(source=0, tag=rank)
+# mat = recvbuf["data"]
+# m = recvbuf["m"]
+# n = recvbuf["n"]
