@@ -16,19 +16,8 @@ def generate_matrix (n):
     print '[DONE]\tGenerated matrix of random integers'
     return output
 
-def column_sum (matrix, m, n, parallel=False):
-    output = []
-    for i in range(0, m):
-        sum_v = 0
-        for j in range(0, n):
-            sum_v += int(matrix[i][j])
-        output += [sum_v]
-
-    if (parallel):
-        for i in range(0, len(output)):
-            final_vector += [output[i]]
-
-    return output
+def column_sum (matrix, m, n):
+    return numpy.sum(matrix, axis=0)
 
 def break_matrix (matrix, t):
     output = []
@@ -38,11 +27,7 @@ def break_matrix (matrix, t):
         print '[WARN]\tReturn matrix as only one thread is to be used'
         return [matrix]
 
-    if (len(matrix) % t != 0):
-        print '[WARN]\tCannot subdivide matrix'
-        return [matrix]
-
-    output = numpy.hsplit(matrix, t)
+    output = numpy.array_split(matrix, t)
 
     print '[DONE]\tBroken down input matrix'
 
@@ -55,35 +40,24 @@ import sys
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
+mat_size = int(sys.argv[1])
+
+if rank == 0:
+    data = generate_matrix(mat_size)
+    chunks = break_matrix(data, size)
+    t = time.time()
+    data = comm.scatter(chunks, root=0)
+else:
+    data = comm.scatter(None, root=0)
+
+data = column_sum(data, len(data), len(data[0]))
+if rank == 0: 
+    col_sum = comm.gather(data, root=0)
+    sums = column_sum(col_sum, len(col_sum), len(col_sum[0]))
+    print "[TIME] " + str(time.time() - t)
+else:
+    new_data = comm.gather(data, root=0)
 
 final_vector = None
 sendbuf = None
 recvbuf = None
-mat_size = 10000
-
-if rank == 0:
-    t = time.time()
-    sendbuf = generate_matrix(mat_size)
-    sendbuf = break_matrix(sendbuf, size)
-    # arr = list(reversed(range(1, size)))
-    # for i in range(1, size):
-        # print "[0] Sending to " + str(i)
-        # recvbuf = comm.send({
-        #     "data": sendbuf[i],
-        #     "m": mat_size,
-        #     "n": mat_size / (size),
-        # }, dest=i, tag=i)
-    # mat = sendbuf[0]
-    # m = mat_size
-    # n = mat_size / size
-    data = comm.scatter(sendbuf, root=0)
-    print "[TIME] " + str(time.time() - t)
-# else:
-#     while not comm.Iprobe(source=0, tag=rank):
-#         print "[" + str(rank) + "] Listening to root"
-#         time.sleep(1)
-
-# recvbuf = comm.recv(source=0, tag=rank)
-# mat = recvbuf["data"]
-# m = recvbuf["m"]
-# n = recvbuf["n"]
