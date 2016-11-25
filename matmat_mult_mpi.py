@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env/python
 import time
 import random as rand
 import numpy
@@ -14,8 +14,12 @@ def generate_matrix (n):
 def column_sum (matrix, m, n):
     return numpy.sum(matrix, axis=0)
 
+def row_sum (matrix, m, n):
+    return numpy.sum(matrix, axis=0)
+
 def mat_mult (matrix, other_mat):
-    return numpy.multiply(matrix, other_mat)
+    return numpy.dot(matrix, other_mat)
+    # return numpy.multiply(matrix, other_mat)
 
 def break_matrix (matrix, t):
     output = []
@@ -39,6 +43,8 @@ comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 mat_size = int(sys.argv[1])
+samp_vector = numpy.random.randint(0, 10 ** 1, size=(mat_size, 1))
+new_matrix = generate_matrix(mat_size)
 
 if rank == 0:
     data = generate_matrix(mat_size)
@@ -48,14 +54,9 @@ if rank == 0:
 else:
     data = comm.scatter(None, root=0)
 
-data = column_sum(data, len(data), len(data[0]))
+data = mat_mult(data, new_matrix)
 if rank == 0: 
-    col_sum = comm.gather(data, root=0)
-    sums = column_sum(col_sum, len(col_sum), len(col_sum[0]))
+    mat_res = comm.gather(data, root=0)
     print "[TIME] " + str(time.time() - t)
 else:
-    new_data = comm.gather(data, root=0)
-
-final_vector = None
-sendbuf = None
-recvbuf = None
+    mat_res = comm.gather(data, root=0)

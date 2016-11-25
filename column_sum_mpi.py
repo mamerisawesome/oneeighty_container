@@ -55,7 +55,3 @@ if rank == 0:
     print "[TIME] " + str(time.time() - t)
 else:
     new_data = comm.gather(data, root=0)
-
-final_vector = None
-sendbuf = None
-recvbuf = None
