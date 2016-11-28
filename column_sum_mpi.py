@@ -48,10 +48,13 @@ if rank == 0:
 else:
     data = comm.scatter(None, root=0)
 
+print data
 data = column_sum(data, len(data), len(data[0]))
+print data
 if rank == 0: 
     col_sum = comm.gather(data, root=0)
     sums = column_sum(col_sum, len(col_sum), len(col_sum[0]))
+    print col_sum, sums
     print "[TIME] " + str(time.time() - t)
 else:
     new_data = comm.gather(data, root=0)

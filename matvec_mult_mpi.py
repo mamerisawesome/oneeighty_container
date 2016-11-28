@@ -14,9 +14,6 @@ def generate_matrix (n):
 def column_sum (matrix, m, n):
     return numpy.sum(matrix, axis=0)
 
-def row_sum (matrix, m, n):
-    return numpy.sum(matrix, axis=0)
-
 def mat_mult (matrix, other_mat):
     return numpy.dot(matrix, other_mat)
     # return numpy.multiply(matrix, other_mat)
@@ -56,8 +53,6 @@ else:
 data = mat_mult(data, samp_vector)
 if rank == 0: 
     mat_res = comm.gather(data, root=0)
-    for i in range(0, len(mat_res)):
-      mat_res[i] = row_sum(mat_res[i], len(mat_res), len(mat_res[i]))
     print "[TIME] " + str(time.time() - t)
 else:
     mat_res = comm.gather(data, root=0)
