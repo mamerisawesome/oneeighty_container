@@ -64,25 +64,26 @@ class Graph:
 
     return points
 
-  def get_squares (self, data, counter=4, output=[]):
+  def get_squares (self, data, counter=5, output=[]):
     if counter == 0:
       print "BASE CASE"
-      print data
-      print counter
-      return [data]
+      print data.to_str()
+      return output
     elif isinstance(data, Point):
-      print "POINT CASE"
-      print data
-      print counter
-      sibs = self.get_siblings(point=data)
-      return self.get_squares(sibs, output=[output])
-      # elif isinstance(data, list):
+      # print "POINT CASE"
+      print data.to_str()
+      sibs = self.get_siblings(data)
+      return self.get_squares(sibs, counter=counter, output=output)
+    # elif isinstance(data, list):
     else:
       print "LIST CASE"
-      print data
-      print counter
+      c = counter-1
+      out = []
       for point in data:
-        return self.get_squares(point, counter=counter-1, output=output+[point])
+        # print point.to_str()
+        sq = self.get_squares(point, counter=c, output=output+[point])
+        out += sq
+      return out
 
   def get_coords (self):
     edge_list = []
@@ -131,9 +132,14 @@ gh = Line(g, h)
 
 # Graph
 g = Graph([ab, ac, ad, be, bc, ce, cd, ch, cf, dh, ef, fg, gh])
-print g.get_squares(a)
+point_list = g.get_squares(a, counter=5)
+
+squares = []
+count = 0
+for vertex in point_list:
+  if :
+  vertex.to_str()
 
 from mpi4py import MPI
 import numpy
 import sys
-
