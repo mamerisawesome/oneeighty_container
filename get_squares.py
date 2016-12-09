@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 import random as rand
+import json
 
 class Point:
   def __init__ (self, x=None, y=None, tup=None, point=None):
@@ -55,35 +56,70 @@ class Graph:
     for edge in self.edges:
       if point.get_coords() in edge.get_coords():
         if not edge.get_coords() \
-           \
-          .index(point.get_coords()): 
+          .index(point.get_coords()):
             ni = 1 # if 0
-        else: 
+        else:
           ni = 0 # el 1
         points += [Point(tup=edge.get_coords()[ni])]
 
     return points
 
-  def get_squares (self, data, counter=5, output=[]):
+  def in_graph (self, point, graph):
+    for p in graph:
+      if point == p:
+        return True
+
+    return False
+
+  def _get_squares (self, data, counter=5, output=[]):
     if counter == 0:
-      print "BASE CASE"
-      print data.to_str()
       return output
     elif isinstance(data, Point):
-      # print "POINT CASE"
-      print data.to_str()
       sibs = self.get_siblings(data)
-      return self.get_squares(sibs, counter=counter, output=output)
-    # elif isinstance(data, list):
+      return self._get_squares(sibs, counter=counter, output=output+[data])
     else:
-      print "LIST CASE"
       c = counter-1
       out = []
       for point in data:
-        # print point.to_str()
-        sq = self.get_squares(point, counter=c, output=output+[point])
+        sq = self._get_squares(point, counter=c, output=output)
         out += sq
       return out
+
+  def get_squares (self, data, counter=5, output=[]):
+    point_list = self._get_squares(data, counter=counter)
+
+    squares = []
+    count = 0
+    i = 0
+
+    for vertex in point_list:
+      try:
+        if i == 0:
+          square = []
+
+        square += [vertex.to_str()]
+
+        if square[0] == square[4] and \
+          not (
+            self.in_graph(square[0], [square[1], square[2], square[3]]) or \
+            self.in_graph(square[1], [square[0], square[2], square[3]]) or \
+            self.in_graph(square[2], [square[0], square[1], square[3]])
+          ) and square not in squares:
+            squares += [square]
+
+        i += 1
+
+        if i == 5:
+          i = 0
+
+      except IndexError:
+        i += 1
+
+    squares = str(squares) \
+      .replace("(", "[") \
+      .replace(")", "]") \
+      .replace("'", "")
+    return json.loads(squares)
 
   def get_coords (self):
     edge_list = []
@@ -105,41 +141,82 @@ class Graph:
 
     return points
 
-# Points
-a = Point(0, 0)
-b = Point(0, 1)
-e = Point(0, 2)
-d = Point(1, 0)
-c = Point(1, 1)
-f = Point(1, 2)
-h = Point(2, 0)
-g = Point(2, 2)
+def generate_testgraph ():
+  # Points
+  a = Point(0, 0)
+  b = Point(0, 1)
+  e = Point(0, 2)
+  d = Point(1, 0)
+  c = Point(1, 1)
+  f = Point(1, 2)
+  h = Point(2, 0)
+  g = Point(2, 2)
 
-# Edges
-ab = Line(a, b)
-ac = Line(a, c)
-ad = Line(a, d)
-be = Line(b, e)
-bc = Line(b, c)
-ce = Line(c, e)
-cd = Line(c, d)
-ch = Line(c, h)
-cf = Line(c, f)
-dh = Line(d, h)
-ef = Line(e, f)
-fg = Line(f, g)
-gh = Line(g, h)
+  # Edges
+  ab = Line(a, b)
+  ac = Line(a, c)
+  ad = Line(a, d)
+  be = Line(b, e)
+  bc = Line(b, c)
+  ce = Line(c, e)
+  cd = Line(c, d)
+  ch = Line(c, h)
+  cf = Line(c, f)
+  dh = Line(d, h)
+  ef = Line(e, f)
+  fg = Line(f, g)
+  gh = Line(g, h)
 
-# Graph
-g = Graph([ab, ac, ad, be, bc, ce, cd, ch, cf, dh, ef, fg, gh])
-point_list = g.get_squares(a, counter=5)
+  # Graph
+  return Graph([ab, ac, ad, be, bc, ce, cd, ch, cf, dh, ef, fg, gh])
 
-squares = []
-count = 0
-for vertex in point_list:
-  if :
-  vertex.to_str()
+def generate_graph (n):
+  points = []
+  for i in range(0, n):
+    for j in range(0, n):
+      points += [Point(i, j)]
+
+  edges = []
+  for i in range(0, len(points)):
+    for j in range(0, len(points)):
+      if (i != j):
+        edges += [Line(points[i], points[j])]
+
+  return Graph(edges)
+
+def chunks(l, n):
+  for i in xrange(0, len(l), n):
+    yield l[i:i + n]
 
 from mpi4py import MPI
 import numpy
 import sys
+
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+
+n = 2
+
+grap = generate_graph(n)
+points = None
+if rank == 0:
+  points = grap.get_points()
+
+  new_list = []
+  for p in points:
+    new_list += [Point(tup=p)]
+
+  points = new_list
+  points = list(chunks(points, ((n * n) / size)))
+  t = time.time()
+
+data = comm.scatter(points, root=0)
+olist = []
+for point in data:
+  olist += [grap.get_squares(point, counter=5)]
+
+res = comm.gather(olist, root=0)
+if rank == 0:
+  print res
+  print "[TIME] " + str(time.time() - t)
