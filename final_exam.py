@@ -5,22 +5,28 @@ import json
 import numpy
 
 class Point:
-  def __init__ (self, x=None, y=None, tup=None, point=None):
-    if x != None and y != None:
+  def __init__ (self, x=None, y=None, id=None):
+    self.id = id
+    if isinstance (x, int) and y != None:
       self.x = x
       self.y = y
-    elif tup != None:
-      self.x = tup[0]
-      self.y = tup[1]
-    elif point != None:
+    elif isinstance (x, list):
+      self.x = x[0]
+      self.y = x[1]
+    elif isinstance (x, Point):
       self.x = point.x
       self.y = point.y
+    else:
+      return None
 
   def get_x (self):
     return self.x
 
   def get_y (self):
     return self.y
+
+  def get_id (self):
+    return self.id
 
   def get_coords (self):
     return (self.x, self.y,)
@@ -88,7 +94,7 @@ class Graph:
             ni = 1 # if 0
         else:
           ni = 0 # el 1
-        points += [Point(tup=edge.get_coords()[ni])]
+        points += [Point(edge.get_coords()[ni])]
 
     return points
 
@@ -142,43 +148,19 @@ class Graph:
       .replace("'", "")
     return json.loads(squares)
 
-def generate_testgraph ():
-  # Points
-  a = Point(0, 0)
-  b = Point(0, 1)
-  e = Point(0, 2)
-  d = Point(1, 0)
-  c = Point(1, 1)
-  f = Point(1, 2)
-  h = Point(2, 0)
-  g = Point(2, 2)
-
-  # Edges
-  ab = Line(a, b)
-  ac = Line(a, c)
-  ad = Line(a, d)
-  be = Line(b, e)
-  bc = Line(b, c)
-  ce = Line(c, e)
-  cd = Line(c, d)
-  ch = Line(c, h)
-  cf = Line(c, f)
-  dh = Line(d, h)
-  ef = Line(e, f)
-  fg = Line(f, g)
-  gh = Line(g, h)
-
-  # Graph
-  return Graph([ab, ac, ad, be, bc, ce, cd, ch, cf, dh, ef, fg, gh])
-
 def generate_graph (n):
   edges = []
+  z = 0
   for i in range(0, n):
     for j in range(0, n):
-        edges += [Line(Point(i, j), Point(i, j+1))]
-        edges += [Line(Point(i, j), Point(i+1, j))]
-        edges += [Line(Point(i, j), Point(i+1, j+1))]
-        edges += [Line(Point(i+1, j), Point(i, j+1))]
+      edges += [Line(Point(i, j), Point(i, j+1))]
+      edges += [Line(Point(i, j), Point(i+1, j))]
+      edges += [Line(Point(i+1, j), Point(i+1, j+1))]
+      edges += [Line(Point(i, j+1), Point(i+1, j+1))]
+      # edges += [Line(Point(i, j), Point(i+1, j+1))]
+      # edges += [Line(Point(i+1, j), Point(i, j+1))]
+
+      z += 1
 
   return Graph(edges)
 
@@ -196,34 +178,53 @@ def flatten(l, counter=2):
   else:
     return flatten(sum(l, []), counter=counter-1)
 
+def get_resistance_distance (g):
+  output = 0
+  graph = g.get_coords()
+  res = {}
+
+  # get serial
+  for i in range(0, len(g.edges)):
+    semi_out = 0
+    pid1 = g.edges[i].get_p1().get_coords()
+    pid2 = g.edges[i].get_p2().get_coords()
+    
+    try: 
+      res[g.edges[i].get_p1().to_str()]    
+    except KeyError:
+      res[g.edges[i].get_p1().to_str()] = 0
+
+    if pid1[0] == pid2[0] and pid1[1] < pid2[1]:
+      semi_out += 1
+    elif pid1[1] == pid2[1] and pid1[0] < pid2[0]:
+      semi_out += 1
+
+    res[g.edges[i].get_p1().to_str()] += semi_out
+    output += semi_out
+
+  # get parallel
+  another_output = []
+  for key, value in res.iteritems():
+    key = key.split("(")[1]
+    key = key.split(")")[0]
+    key = key.split(", ")
+
+    key[0] = int(key[0])
+    key[1] = int(key[1])
+
+    try:
+      another_output[key[0]] += value
+    except IndexError:
+      another_output += [value]
+
+  truly_final = 0
+  for val in another_output:
+    truly_final += val ** -1
+
+  return truly_final
+
 from mpi4py import MPI
-import numpy
 import sys
 
-comm = MPI.COMM_WORLD
-size = comm.Get_size()
-rank = comm.Get_rank()
-
-n = 8
-
-grap = generate_graph(n)
-points = None
-if rank == 0:
-  points = grap.get_points()
-
-  new_list = []
-  for p in points:
-    new_list += [Point(tup=p)]
-
-  points = new_list
-  points = list(chunks(points, size))
-  t = time.time()
-
-data = comm.scatter(points, root=0)
-olist = []
-for point in data:
-  olist += [grap.get_squares(point, counter=5)]
-
-res = comm.gather(olist, root=0)
-if rank == 0:
-  print "[TIME] " + str(time.time() - t)
+graph = generate_graph(1000)
+print get_resistance_distance(graph)
