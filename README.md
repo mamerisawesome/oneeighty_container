@@ -2,7 +2,7 @@
 
 ## About
 
-Exercise compilation for 'Introduction to Parallel Computing in UPLB.
+Exercise compilation for "Introduction to Parallel Computing" in UPLB.
 
 ## Author
 
